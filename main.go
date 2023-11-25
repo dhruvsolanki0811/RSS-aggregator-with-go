@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dhruvsolanki0811/rssagg/internal/database"
 	"github.com/go-chi/chi"
@@ -39,6 +40,7 @@ func main(){
 		DB:dbQueries,
 	}
 
+	go startScraping(dbQueries,10,time.Minute)
 	log.Printf("Server starting on port %v",portString)
 	router:= chi.NewRouter()
 	
@@ -53,10 +55,17 @@ func main(){
 	  }))
 
 	v1Router:=chi.NewRouter()
-
+	
 	v1Router.Get("/healthz",handlerReadiness)
 	v1Router.Get("/err",handleErr)
 	v1Router.Post("/users",apiCnifg.handlerCreateUser)
+	v1Router.Get("/users",apiCnifg.middlewareAuth(apiCnifg.handlerGetUser))
+	v1Router.Post("/feeds",apiCnifg.middlewareAuth(apiCnifg.handlerCreateFeed))
+	v1Router.Get("/feeds",apiCnifg.handlerGetFeeds)
+	v1Router.Post("/feedfollows",apiCnifg.middlewareAuth(apiCnifg.handlerFeedFollowCreate))
+	v1Router.Delete("/feedfollows/{feedFollowID}",apiCnifg.middlewareAuth(apiCnifg.handlerFeedFollowDelete))
+	v1Router.Get("/posts",apiCnifg.middlewareAuth(apiCnifg.handlerGetPosts))
+
 	router.Mount("/v1",v1Router)
 
 	server:=&http.Server{
